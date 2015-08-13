@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>title</title>
+    <link rel="stylesheet" href="style.css">
+    <script>
+"use strict"
+
+function packKey(objId,attrName){ return objId+'.'+attrName }
+function packReverseKey(attrName,value){ return attrName+'='+value }
+
+function Prop(attrName){
+    var rev = Rev(attrName)
+    function key(objId){ return packKey(objId,attrName) }
+    function unflat(world,values){
+        if(values.length==0) return "";
+        if(values.length==1) return values[0] + "";
+        throw values
+    }
+    function flat(value){ return value + "" }
+    return { get: get(key,unflat), key: key, flat: flat, rev: rev }
+}
+
+function Rel(attrName){
+    var rev = Rev(attrName)
+    function key(objId){ return packKey(objId,attrName) }
+    function unflat(world,values){ 
+        var valueIds = values.filter(function(valueId){ 
+            return valueId 
+        })
+        return Obj(world,valueIds)
+    }
+    function flat(value){ return value ? value(Id) : value }
+    return { get: get(key,unflat), key: key, flat: flat, rev: rev }
+}
+
+function Rev(attrName){
+    function key(objId){ return packReverseKey(attrName,objId) }
+    function unflat(world,values){
+        var valueIds = []
+        values.forEach(function(h){
+            if(h) for(var valueId in h) if(h[valueId]) valueIds.push(valueId)
+        })
+        return Obj(world,valueIds)
+    }
+    return { get: get(key,unflat), key: key }
+}
+
+function get(key,unflat){
+    return function(world,objIds){
+        return unflat(world,objIds.map(function(objId){
+            var k = key(objId)
+            return world[k]
+        }))
+    }
+}
+
+function rw(world,f){
+    var h = {}
+    function where(value){ return Obj(world,[value]) }
+    function set(obj, attrDef, value){
+        h[attrDef.key(obj(Id))] = attrDef.flat(value)
+    }
+    function index(key,on){
+        var dot = key.indexOf(".")
+        var objId = key.substr(0,dot)
+        var attrName = key.substr(dot+1)
+        var value = world[key]
+        var reverseKey = packReverseKey(attrName,value)
+        if(!world[reverseKey]) world[reverseKey] = {}
+        world[reverseKey][objId] = on
+    }
+    f(where,set)
+    for(var key in h){
+        if(key in world) index(key,false)
+        world[key] = h[key]
+        index(key,true)
+    }
+}
+
+var List = { get: function get(world,objIds){
+    return objIds.map(function(objId){ return Obj(world,[objId]) })
+}}
+
+var Id = { get: function get(world,objIds){
+    if(objIds.length==1) return objIds[0]
+    throw objIds
+}}
+
+var Ids = { get: function get(world,objIds){
+    return objIds
+}}
+
+function Obj(world,objIds){ return function recv(op){ 
+    return op.get(world,objIds) 
+}}
+
+function newId(){ return (Math.random()+"").substr(2) }
+
+function ro(world,f){
+    function where(value){ return Obj(world,[value]) }
+    f(where)
+}
+
+/******************************************************************************/
+
+var isSize = Prop("isSize")
+var isGlue = Prop("isGlue")
+var isProduct = Prop("isProduct")
+var caption = Prop("caption")
+var size = Rel("size")
+var glue = Rel("glue")
+
+var world = {}
+
+rw(world,function(where,set){
+    var mySize = where(newId())
+    var myGlue = where(newId())
+    var myProduct = where(newId())
+    set(mySize,isSize,1);
+        set(mySize,caption,"20x20");
+    set(myGlue,isGlue,1);
+        set(myGlue,caption,"PVA");
+    set(myProduct,isProduct,1);
+        set(myProduct,size,mySize);
+        set(myProduct,glue,myGlue);
+})
+
+
+document.write( JSON.stringify(world) )
+
+ro(world,function(where){
+    var res = where("20x20")(caption.rev)(size.rev)(glue)(caption)//(Ids)
+    alert(res)
+})
+/*
+.forEach(function(value){
+    alert(value)
+})*/
+
+</script>
+  </head>
+  <body>
+    BBB
+  </body>
+</html>
