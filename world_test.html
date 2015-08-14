@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>title</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="world.js"></script>
+    <script>
+"use strict"
+
+
+
+/******************************************************************************/
+
+var env = World()
+
+var isSize = env.Prop("isSize")
+var isGlue = env.Prop("isGlue")
+var isProduct = env.Prop("isProduct")
+var caption = env.Prop("caption")
+var size = env.Rel("size")
+var glue = env.Rel("glue")
+
+
+
+env.rwTx(function(){
+    var mySize = env.where(env.newId())
+    var myGlue = env.where(env.newId())
+    var myProduct = env.where(env.newId())
+
+    mySize(isSize)(1)
+    mySize(caption)("20x20")
+
+    myGlue(isGlue)(1)
+    myGlue(caption)("PVA")
+
+    myProduct(isProduct)(1)
+    myProduct(size)(mySize)
+    myProduct(glue)(myGlue)
+})
+
+var handler;
+
+env.roTx(function(){
+    env.dump()
+    console.log(env.where("20x20")(caption.rev)())
+    console.log(env.where("20x20")(caption.rev)()(size.rev)())
+    //env.where("20x20")(caption.rev)()(size.rev)()(glue)()(caption)("hren")
+    var res = env.where("20x20")(caption.rev)()(size.rev)()(glue)()(caption)()
+    console.log(res)
+    // env.where("20x20")(caption.rev)("hren")
+    handler = env.where("20x20")(caption.rev)()(size.rev)()(glue)()(caption)
+})
+
+handler("test")
+env.roTx(function(){
+    var res = env.where("20x20")(caption.rev)()(size.rev)()(glue)()(caption)()
+    console.log(res)
+})
+
+
+
+
+
+
+//
+/*
+
+attr = obj(attrDef)
+value = attr()
+bind(attr)
+
+
+mySize = env.where("20x20")(caption.rev)()
+
+myProductList = mySize(size.rev)().list()
+mySize = myProduct(size)()
+myProduct(size)(mySize)
+
+
+env.where("1")(isProduct.rev)().list().map(function(pr){
+  ['tr',
+    ['td',pr(name)()],
+    ['td',pr(glue)()(caption)()],
+    ['td',input(pr(comment))],
+
+  ]
+})
+
+function a(q){
+  return function b(w){ return q+w }
+}
+a(2)(3)
+
+part = a(2)
+part(3)
+
+def a(q: Int)(w: Int) = q + w
+
+
+*/
+
+</script>
+  </head>
+  <body>
+    BBB
+  </body>
+</html>
