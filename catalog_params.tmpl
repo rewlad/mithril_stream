@@ -1,0 +1,92 @@
+
+<div id="cat-params"></div>
+<script src="mithril.js"></script>
+<script src="world.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/es5-shim/4.0.3/es5-shim.min.js"></script><!-- mithril fix for IE7 -->
+<script>
+"use strict";
+(function(){
+
+  var env = World();
+
+  var url = "/catalog/catalog.json";
+  var element = document.getElementById('cat-params');
+
+
+
+  var isSize = env.Prop("is_size");
+  var isGlue = env.Prop("is_glue");
+  var isType = env.Prop("is_type");
+
+  var caption = env.Prop("caption");
+
+
+
+
+
+  m.request({ method: "GET", url: url }).then(function(list){
+    console.log(list);
+    env.rwTx(function(){
+      list.forEach(function(rec){
+        console.log(rec);
+        var obj = env.where(rec.id)
+        for(var attrName in rec) if(attrName !== "id")
+          obj(env.Prop(attrName))(rec[attrName])
+      })
+    })
+  })
+
+  function newRow(prop){
+    var newId = env.where(env.newId())
+    newId(prop)(1)
+    newId(caption)('')
+  }
+
+  function save(){
+    env.dump();
+    var res = [];
+    function lastRec(){ return res.length>0 ? res[res.length-1] : null }
+    env.exportEach(function(objId,attrName,value){
+      if(!lastRec() || objId!==lastRec().id) res.push({id:objId})
+      console.log(lastRec());
+      lastRec()[attrName] = value
+    })
+    //return res;
+    console.log(res)
+  }
+
+  function binds(attr){
+    return {
+      //oninput: m.withAttr("value", attr), //don't work in IE7
+      onchange: m.withAttr("value", attr),
+      value: attr()
+    }
+  }
+
+  function view() { return env.roTx(function(){
+    return  [
+      m("div.block", [
+        m("table.gtbl", [
+            m("tr",[
+                m("th", "Caption"),
+                m("th", m("button.hover", { onclick: function(ev){ newRow(isSize) } }, "Add new size"))
+            ]),
+
+            env.where("1")(isSize.rev)().list().map(function(sizeObj) {
+                //console.log("obj: "+sizeObj)
+                return m("tr", [
+                    m("td", m("input.biginp", binds(sizeObj(caption)))),
+                    m("td", m("button.hover.del", { onclick: function(ev){ sizeObj(isSize)(0) } }, "Del"))
+                ])
+            })
+        ])
+      ]),
+      m("button.hover.approve", {onclick: function(ev){ save() } /*, disabled:!valid()*/ }, "Confirm changes")
+    ];
+  })
+  };
+
+  m.module(element, {view: view});
+
+})();
+</script>

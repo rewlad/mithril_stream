@@ -1,0 +1,9 @@
+[
+{"id":"1","is_type":"1","caption_est":"est name","caption_eng":"eng name","caption_rus":"rus name"},
+
+{"id":"2","is_glue":"1","caption":"MR"},
+{"id":"5","is_glue":"1","caption":"WBP"},
+
+{"id":"3","is_size":"1","caption":"2x2"},
+{"id":"4","is_size":"1","caption":"20x20"}
+]
