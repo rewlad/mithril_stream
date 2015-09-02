@@ -1,0 +1,14 @@
+#products-params {  }
+.tbldata {border-top: 1px solid #666633; border-bottom: 1px solid #666633; }
+.fleft-block { float: left; margin: 0 10px 10px; }
+
+#products-params table.cat-deftable th { font-weight: bold }
+#products-params table.cat-deftable td { border-top: 1px solid #F0F0F0 }
+#products-params table.cat-deftable td input,
+#products-params table.cat-deftable td select { margin: 5px; padding: 4px 6px; font-size:14px; }
+#products-params table.cat-deftable td select { padding-right: 0; }
+/* ===== BUTTONS ===== */
+.cat-bttn { margin: 5px; padding: 4px 8px; background-color: #A3C2A3; border: 1px solid #666600; cursor: pointer; }
+.cat-bttn:hover { background-color: #DBDBB8; }
+.cat-bttn.del { background-color: #E7B6B6; }
+.cat-bttn.approve {margin: 10px; padding: 4px 8px; color: #fff; background-color: #568156; font-weight: bold }

@@ -1,34 +1,72 @@
-
-<div id="cat-params"></div>
+<div class="result"></div>
+<div id="products-params"></div>
 <script src="mithril.js"></script>
 <script src="world.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/es5-shim/4.0.3/es5-shim.min.js"></script><!-- mithril fix for IE7 -->
+<link href="/css/catalog.css" rel="stylesheet">
 <script>
 "use strict";
 (function(){
 
   var env = World();
+  var viewModel = World();
 
   var url = "/catalog/catalog.json";
-  var element = document.getElementById('cat-params');
+  var element = document.getElementById('products-params');
 
 
-
+  var isType = env.Prop("is_type");
   var isSize = env.Prop("is_size");
   var isGlue = env.Prop("is_glue");
-  var isType = env.Prop("is_type");
+  var glue = env.Prop("glue");
+  var isApplication = env.Prop("is_application");
+  var isConditions = env.Prop("is_conditions");
 
+  var id = env.Prop("id");
   var caption = env.Prop("caption");
+  var caption_est = env.Prop("caption_est");
+  var caption_rus = env.Prop("caption_rus");
+
+  var isProduct = env.Prop("is_prod");
+  var name = env.Prop("name");
+  var name_est = env.Prop("name_est");
+  var name_rus = env.Prop("name_rus");
+
+  var selectValue = env.Prop();
 
 
+  //
+  var delGlueRow = delRow(isGlue);
+  var delProdRow = delRow(isProduct);
+  var copyProdRow = copyRow([caption,name]); // env.Act(function(obj,actArg){})
+
+
+  //
+  function delRow(attrDef){
+    return env.Act(function(obj,actArg){
+      obj(attrDef)(0)
+    })
+  }
+
+  function copyRow(attrDefList){
+    return env.Act(function(obj,actArg){
+
+    })
+  }
+
+  function bindClick(attr,actArg){
+    return {
+      onclick: function(ev){ return attr(actArg) }
+    }
+  }
 
 
 
   m.request({ method: "GET", url: url }).then(function(list){
-    console.log(list);
+    //console.log(list);
     env.rwTx(function(){
       list.forEach(function(rec){
-        console.log(rec);
+        //console.log(rec);
         var obj = env.where(rec.id)
         for(var attrName in rec) if(attrName !== "id")
           obj(env.Prop(attrName))(rec[attrName])
@@ -42,17 +80,30 @@
     newId(caption)('')
   }
 
+
   function save(){
-    env.dump();
+    //env.dump();
     var res = [];
     function lastRec(){ return res.length>0 ? res[res.length-1] : null }
     env.exportEach(function(objId,attrName,value){
       if(!lastRec() || objId!==lastRec().id) res.push({id:objId})
-      console.log(lastRec());
+      //console.log(lastRec());
       lastRec()[attrName] = value
     })
     //return res;
-    console.log(res)
+    console.log(res);
+
+      /*$.ajax({
+        type: "POST",
+        url: "/catalog",
+        data: res,
+        dataType: "json",
+        contentType : "application/json",
+        success: function(data){
+          $( ".result" ).html( data )
+        }
+      });*/
+
   }
 
   function binds(attr){
@@ -65,23 +116,128 @@
 
   function view() { return env.roTx(function(){
     return  [
-      m("div.block", [
-        m("table.gtbl", [
+      m("div.clearfix",[
+        m("button.cat-bttn.approve", {onclick: function(ev){ save() } /*, disabled:!valid()*/ }, "Confirm changes")
+      ]),
+      m("div.tbldata.clearfix",[
+      // -- start blocks
+
+      //Conditions
+      m("div.fleft-block", [
+        m("table.cat-deftable", [
             m("tr",[
-                m("th", "Caption"),
-                m("th", m("button.hover", { onclick: function(ev){ newRow(isSize) } }, "Add new size"))
+                m("th", "Conditions"),
+                m("th", ""),
+                m("th", m("button.cat-bttn", { onclick: function(ev){ newRow(isConditions) } }, "+ Condition"))
+            ]),
+
+            env.where("1")(isConditions.rev)().list().map(function(conditionsObj) {
+                return m("tr", [
+                    m("td", m("input", binds(conditionsObj(caption_rus)))),
+                    m("td", m("input", binds(conditionsObj(caption_est)))),
+                    m("td", m("button.cat-bttn.del", { onclick: function(ev){ typeObj(isConditions)(0) } }, "Del"))
+                ])
+            })
+        ])
+      ]),
+
+      //Size
+      m("div.fleft-block", [
+        m("table.cat-deftable", [
+            m("tr",[
+                m("th", "Canvas size"),
+                m("th", m("button.cat-bttn", { onclick: function(ev){ newRow(isSize) } }, "+ Size"))
             ]),
 
             env.where("1")(isSize.rev)().list().map(function(sizeObj) {
                 //console.log("obj: "+sizeObj)
                 return m("tr", [
-                    m("td", m("input.biginp", binds(sizeObj(caption)))),
-                    m("td", m("button.hover.del", { onclick: function(ev){ sizeObj(isSize)(0) } }, "Del"))
+                    m("td", m("input", binds(sizeObj(caption)))),
+                    m("td", m("button.cat-bttn.del", { onclick: function(ev){ sizeObj(isSize)(0) } }, "Del"))
                 ])
             })
         ])
       ]),
-      m("button.hover.approve", {onclick: function(ev){ save() } /*, disabled:!valid()*/ }, "Confirm changes")
+
+
+      m("div.fleft-block", [
+        m("table.cat-deftable", [
+            m("tr",[
+                m("th", "Glue name"),
+                m("th", m("button.cat-bttn", { onclick: function(ev){ newRow(isGlue) } }, "+ Glue"))
+            ]),
+
+            env.where("1")(isGlue.rev)().list().map(function(glueObj) {
+                return m("tr", [
+                    m("td", m("input", binds(glueObj(caption)))),
+                    m("td", m("button.cat-bttn.del", { onclick: function(ev){ glueObj(isGlue)(0) } }, "Del"))
+                ])
+            })
+        ])
+      ]),
+
+      m("div.clearfix"),
+
+      m("div", [ m("hr"), m("h3","Products"),
+
+      //m("div", [ m("select", , "Filter by Glue WBP" ) ]),
+
+        m("table.cat-deftable", [
+            m("tr",[
+                m("th", "Rus name"),
+                m("th", "Est name"),
+                m("th", "Glue"),
+                m("th", m("button.cat-bttn", { onclick: function(ev){ newRow(isProduct) } }, "+ Product"))
+            ]),
+
+            env.where("1")(isProduct.rev)().list().map(function(prodObj) {
+                //filterBy(prodObj,filters)
+                return m("tr", [
+                    m("td", m("input", binds(prodObj(name_rus)))),
+                    m("td", m("input", binds(prodObj(name_est)))),
+
+
+                  //selects
+                    m("td", m("select", binds(prodObj(glue)), [
+                      env.where("1")(isGlue.rev)().list().map(function(glueObj) {
+                        return m('option', {value: glueObj(env.id)()}, glueObj(caption)());
+                      })
+                    ])),
+
+
+                    m("td", [
+                      m("button.cat-bttn", bindClick(prodObj(copyProdRow)), "Copy"),
+                      m("button.cat-bttn.del", bindClick(prodObj(delProdRow)) , "Del"),   //{ onclick: function(ev){ prodObj(isProduct)(0) } }
+                    ])
+                ])
+            })
+        ])
+      ]),
+
+      //Type
+      m("div", [ m("hr"), m("h3","Types"),
+        m("table.cat-deftable", [
+            m("tr",[
+                m("th", "Rus name"),
+                m("th", "Est name"),
+                m("th", m("button.cat-bttn", { onclick: function(ev){ newRow(isType) } }, "+ Type"))
+            ]),
+
+            env.where("1")(isType.rev)().list().map(function(typeObj) {
+                return m("tr", [
+                    m("td", m("input", binds(typeObj(caption_rus)))),
+                    m("td", m("input", binds(typeObj(caption_est)))),
+                    m("td", m("button.cat-bttn.del", { onclick: function(ev){ typeObj(isType)(0) } }, "Del"))
+                ])
+            })
+        ])
+      ]),
+
+      // -- end blocks
+      ]),
+      m("div.clearfix",[
+        m("button.cat-bttn.approve", {onclick: function(ev){ save() } /*, disabled:!valid()*/ }, "Confirm changes")
+      ])
     ];
   })
   };

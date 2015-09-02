@@ -5,5 +5,12 @@
 {"id":"5","is_glue":"1","caption":"WBP"},
 
 {"id":"3","is_size":"1","caption":"2x2"},
-{"id":"4","is_size":"1","caption":"20x20"}
+{"id":"4","is_size":"1","caption":"20x20"},
+
+{"id":"1865425525","is_prod":"1","glue":"5","name_rus":"name rus"},
+{"id":"28654444525","is_prod":"1","glue":"5","name_rus":"name rus"},
+{"id":"386523455525","is_prod":"1","glue":"2","name_rus":"name rus"},
+{"id":"5865425525","is_prod":"1","glue":"5","name_rus":"name rus"},
+{"id":"4865425525","is_prod":"1","glue":"2","name_rus":"name rus"},
+{"id":"9865425525","is_prod":"1","glue":"5","name_rus":"name rus"}
 ]

@@ -56,6 +56,13 @@ function World(){
       return run
   }
 
+  function Act(act){           // attrName may be needed for server render
+    function run(objIds,args){ // may be args are out of concept here?
+      return rwTx(function(){ return act(Obj(objIds), args[0]) })
+    }
+    return run
+  }
+
   function id(objIds,args){
       if(args.length > 0) throw new Error(args)
       if(objIds.length==1) return objIds[0]
@@ -154,6 +161,7 @@ function World(){
   return {
     Rel: Rel,
     Prop: Prop,
+    Act: Act,
     id: id,
     newId: newId,
     where: where,
