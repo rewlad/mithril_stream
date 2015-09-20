@@ -22,6 +22,7 @@ function World(){
       }
       function flat(value){ return value + "" }
       run.rev = Rev(attrName)
+      run.rel = Rel(attrName)
       return run
   }
 
@@ -62,6 +63,57 @@ function World(){
     }
     return run
   }
+
+  /*
+    var size = env.Prop("size")
+    var volume = env.Prop("volume")
+
+    env.where("2x2")(size)()(env.and)( env.where("2ml")(volume)() )
+
+    env.and( env.where("2x2")(size)(), env.where("2ml")(volume)() )
+
+    size2x2Obj(env.eq)
+
+    ...()(sizeEq)("2x2").list()
+  */
+
+  function and(aObjs,bObjs){
+    var aObjIds = aObjs(ids)().slice().sort()
+    var bObjIds = bObjs(ids)().slice().sort()
+    return Obj(arrayIntersect(aObjIds, bObjIds))
+  }
+
+  function arrayIntersect(a, b){
+    var ai=0, bi=0;
+    var result = [];
+    while( ai < a.length && bi < b.length ){
+     if      (a[ai] < b[bi] ){ ai++; }
+     else if (a[ai] > b[bi] ){ bi++; }
+     else if (a[ai] === b[bi]){
+       result.push(a[ai]);
+       ai++;
+       bi++;
+     } else throw new Error("not compatible arrays")
+    }
+    return result;
+  }
+
+
+
+  /*
+  function Filter(attrDef){
+    function run(objIds,args){
+      return Obj(objIds.filter(function(objId){ return Obj([objId])(attrDef)() == args[0] }))
+    }
+    return run
+  }
+
+  function eq(objIds,args){
+    if(objIds.length !== thatObjIds.length) return false;
+    for(var i=0;i<objIds.length;i++) if(objIds[i]!==thatObjIds[i]) return false;
+    return true;
+  }
+  */
 
   function id(objIds,args){
       if(args.length > 0) throw new Error(args)
@@ -105,6 +157,7 @@ function World(){
 
   function newId(){ return (Math.random()+"").substr(2) }
   function where(value){ return Obj([value]) }
+  function none(){ return Obj([]) }
 
   function doTx(ini,f){
     if(tx) throw new Error(tx,"nested tx is not supported")
@@ -165,6 +218,8 @@ function World(){
     id: id,
     newId: newId,
     where: where,
+    and: and,
+    none: none,
     roTx: roTx,
     rwTx: rwTx,
     exportEach: exportEach,
