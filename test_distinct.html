@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>title</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="world.js"></script>
+    <script>
+"use strict"
+
+/******************************************************************************/
+
+var env = World()
+
+var caption = env.Prop("caption")
+var isCategory = env.Prop("isCategory")
+var isSize = env.Prop("isSize")
+var isProduct = env.Prop("isProduct")
+var category = env.Prop("category")
+var size = env.Prop("size")
+
+env.rwTx(function(){
+    
+    function cat(captVal){
+        var res = env.where(env.newId())
+        res(isCategory)("1")
+        res(caption)(captVal)
+        return res
+    }
+    function sz(captVal){
+        var res = env.where(env.newId())
+        res(isSize)("1")
+        res(caption)(captVal)
+        return res
+    }
+    function prod(captVal,catObj,sizeObj,isProductV){
+        var res = env.where(env.newId())
+        res(caption)(captVal)
+        res(category)(catObj(env.id)())
+        res(size)(sizeObj(env.id)())
+        res(isProduct)(isProductV)
+        return res
+    }
+    
+    
+    var catA = cat("A")
+    var catB = cat("B")
+
+    var size2x2 = sz("2x2")
+    var size3x3 = sz("3x3")
+    var size4x4 = sz("4x4")
+    
+    prod("p0",catA,size2x2,"1")
+    prod("p1",catA,size3x3,"1")
+    prod("p2",catA,size3x3,"1")
+    prod("p3",catA,size3x3,"")
+    
+    prod("p5",catB,size3x3,"1")
+    prod("p6",catB,size4x4,"1")
+
+})
+
+env.roTx(function(){
+    var res = env.where("1")(isCategory.rev)().list().map(function(catObj){
+        var prodsOfCat = catObj(category.rev)()(isProduct.eq)("1")
+        var sizesOfCat = prodsOfCat(size.rel)()(isSize.eq)("1")
+        return [catObj(caption)(), sizesOfCat.list().map(function(sizeObj){
+            var sizeId = sizeObj(env.id)()
+            var prodsOfCatAndSize = prodsOfCat(size.eq)(sizeId)
+            return [
+                sizeObj(caption)(), prodsOfCatAndSize(env.count)(), 
+                prodsOfCatAndSize.list().map(function(prodObj){
+                    return prodObj(caption)()
+                })
+            ]
+        })]
+    })
+    console.log(res)
+})
+
+
+</script>
+  </head>
+  <body>
+    BBB
+  </body>
+</html>

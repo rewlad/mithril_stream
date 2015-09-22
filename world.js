@@ -23,6 +23,7 @@ function World(){
       function flat(value){ return value + "" }
       run.rev = Rev(attrName)
       run.rel = Rel(attrName)
+      run.eq = EqFilter(run)
       return run
   }
 
@@ -30,10 +31,11 @@ function World(){
       function run(objIds,args){ return getOrSet(key,flat,unflat,objIds,args) }
       function key(objId){ return packKey(objId,attrName) }
       function unflat(values){
-          var valueIds = values.filter(function(valueId){
-              return valueId
+          var valueIds = Distinct()
+          values.forEach(function(valueId){ 
+            if(valueId) valueIds.push(valueId)
           })
-          return Obj(valueIds)
+          return Obj(valueIds.list)
       }
       function flat(value){
         return value ? value(id)() : value
@@ -46,24 +48,49 @@ function World(){
       function run(objIds,args){ return getOrSet(key,flat,unflat,objIds,args) }
       function key(objId){ return packReverseKey(attrName,objId) }
       function unflat(values){
-          var valueIds = []
+          var valueIds = Distinct()
           values.forEach(function(h){
               if(h) for(var valueId in h) if(h[valueId]) valueIds.push(valueId)
           })
-          return Obj(valueIds)
+          return Obj(valueIds.list)
       }
       function flat(value){ throw new Error(value,"can not flat") }
       run.toString = function(){ return "Rev<"+attrName+">" }
       return run
   }
 
+  function EqFilter(propRun){
+    function run(objIds,args){ 
+        function filter(objId){ return propRun([objId],[]) === args[0] }
+        return Obj(objIds.filter(filter)) 
+    }
+    return run
+  }
+  
   function Act(act){           // attrName may be needed for server render
     function run(objIds,args){ // may be args are out of concept here?
       return rwTx(function(){ return act(Obj(objIds), args[0]) })
     }
     return run
   }
-
+  
+  function Distinct(){
+    var was = {}
+    var list = []
+    function push(k){
+        if(!was[k]){
+            was[k] = true
+            list.push(k)
+        }
+    }
+    return { list: list, push: push }
+  }
+  
+  function count(objIds,args){
+    if(args.length > 0) throw new Error(args)
+    return objIds.length
+  }
+  
   /*
     var size = env.Prop("size")
     var volume = env.Prop("volume")
@@ -75,7 +102,7 @@ function World(){
     size2x2Obj(env.eq)
 
     ...()(sizeEq)("2x2").list()
-  */
+  
 
   function and(aObjs,bObjs){
     var aObjIds = aObjs(ids)().slice().sort()
@@ -96,22 +123,6 @@ function World(){
      } else throw new Error("not compatible arrays")
     }
     return result;
-  }
-
-
-
-  /*
-  function Filter(attrDef){
-    function run(objIds,args){
-      return Obj(objIds.filter(function(objId){ return Obj([objId])(attrDef)() == args[0] }))
-    }
-    return run
-  }
-
-  function eq(objIds,args){
-    if(objIds.length !== thatObjIds.length) return false;
-    for(var i=0;i<objIds.length;i++) if(objIds[i]!==thatObjIds[i]) return false;
-    return true;
   }
   */
 
@@ -186,6 +197,7 @@ function World(){
             world[key] = tx.changes[key]
             index(key,true)
         }
+        //console.log(world)
       })
   }
 
@@ -212,13 +224,12 @@ function World(){
   function dump(){ console.log(world) }
 
   return {
-    Rel: Rel,
     Prop: Prop,
     Act: Act,
     id: id,
     newId: newId,
     where: where,
-    and: and,
+    count: count,
     none: none,
     roTx: roTx,
     rwTx: rwTx,
