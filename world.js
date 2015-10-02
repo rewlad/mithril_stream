@@ -9,7 +9,7 @@ function World(){
 
   function Error(arg,msg){
     if(!msg) msg = 'Error';
-    this.toString = function(){ return msg+' - '+arg.toString()}
+    this.toString = function(){ return msg+' - '+(arg||"").toString()}
   }
 
   function Prop(attrName){
@@ -17,13 +17,14 @@ function World(){
       function key(objId){ return packKey(objId,attrName) }
       function unflat(values){
           if(values.length==0) return "";
-          if(values.length==1) return values[0] + "";
+          if(values.length==1) return (values[0]||"") + "";
           throw new Error(values)
       }
       function flat(value){ return value + "" }
       run.rev = Rev(attrName)
       run.rel = Rel(attrName)
       run.eq = EqFilter(run)
+      run.num = Num(run)
       return run
   }
 
@@ -60,13 +61,21 @@ function World(){
   }
 
   function EqFilter(propRun){
-    function run(objIds,args){ 
+    function run(objIds,args){
         function filter(objId){ return propRun([objId],[]) === args[0] }
-        return Obj(objIds.filter(filter)) 
+        return Obj(objIds.filter(filter))
     }
     return run
   }
-  
+
+  function Num(propRun){
+    function run(objIds,args){
+      if(args.length===0) return propRun(objIds,args)-0;
+      throw new Error(args)
+    }
+    return run
+  }
+
   function Act(act){           // attrName may be needed for server render
     function run(objIds,args){ // may be args are out of concept here?
       return rwTx(function(){ return act(Obj(objIds), args[0]) })
@@ -148,12 +157,15 @@ function World(){
     }
     return unflat(objIds.map(function(objId){
         var k = key(objId)
-        if(!tx) throw new Error(tx, "out of tx")
+        if(!tx)
+          throw new Error(tx, "out of tx")
         return world[k]
     }))
   }
 
   function Attr(objIds, attrDef){
+    if(!attrDef)
+      throw new Error("");
     function recv(value){ return attrDef(objIds,arguments) }
     recv.toString = function(){ return "Attr<"+objIds.join(",")+"> "+attrDef }
     return recv
