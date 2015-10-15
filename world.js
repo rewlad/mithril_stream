@@ -24,6 +24,7 @@ function World(){
       run.rev = Rev(attrName)
       run.rel = Rel(attrName)
       run.eq = EqFilter(run)
+      run.ne = NeFilter(run)
       run.num = Num(run)
       return run
   }
@@ -63,6 +64,13 @@ function World(){
   function EqFilter(propRun){
     function run(objIds,args){
         function filter(objId){ return propRun([objId],[]) === args[0] }
+        return Obj(objIds.filter(filter))
+    }
+    return run
+  }
+  function NeFilter(propRun){
+    function run(objIds,args){
+        function filter(objId){ return propRun([objId],[]) !== args[0] }
         return Obj(objIds.filter(filter))
     }
     return run
@@ -193,49 +201,45 @@ function World(){
   }
   function roTx(f){ return doTx(null,f) }
   function rwTx(f){
-      function index(key,on){
-          var dot = key.indexOf(".")
-          var objId = key.substr(0,dot)
-          var attrName = key.substr(dot+1)
-          var value = world[key]
-          var reverseKey = packReverseKey(attrName,value)
-          if(!world[reverseKey]) world[reverseKey] = {}
-          world[reverseKey][objId] = on
-      }
-      doTx({},function(){
-        f()
-        for(var key in tx.changes){
-            if(key in world) index(key,false)
-            world[key] = tx.changes[key]
-            index(key,true)
-        }
-        //console.log(world)
-      })
+    doTx({},function(){
+      f()
+      var data = sortedFacts(tx.changes)
+      if(data.length>0) pub.commit(data)
+    })
   }
 
-  function exportEach(f){
+  function index(key,on){
+    var dot = key.indexOf(".")
+    var objId = key.substr(0,dot)
+    var attrName = key.substr(dot+1)
+    var value = world[key]
+    var reverseKey = packReverseKey(attrName,value)
+    if(!world[reverseKey]) world[reverseKey] = {}
+    world[reverseKey][objId] = on
+  }
+  function merge(key,value){
+    if(key in world) index(key,false)
+    world[key] = value
+    index(key,true)
+  }
+
+  function exportEach(){
+    return sortedFacts(world)
+  }
+  function sortedFacts(h){
     var keys=[];
-    for(var key in world){
+    for(var key in h){
       var equ = key.indexOf("=");
       if(equ !== -1) continue;
       keys.push(key);
     };
-    keys.sort();
-    var len = keys.length;
-
-    for(var i = 0; i < len; i++){
-      var dot = keys[i].indexOf(".");
-      var objId = keys[i].substr(0,dot);
-      var attrName = keys[i].substr(dot+1);
-      var value = world[keys[i]];
-
-      f(objId,attrName,value);
-    }
+    keys.sort()
+    return keys.map(function(k){ return [k,h[k]] });
   }
 
   function dump(){ console.log(world) }
 
-  return {
+  var pub = {
     Prop: Prop,
     Act: Act,
     id: id,
@@ -246,6 +250,8 @@ function World(){
     roTx: roTx,
     rwTx: rwTx,
     exportEach: exportEach,
-    dump: dump
+    dump: dump,
+    merge: merge
   };
+  return pub;
 }
