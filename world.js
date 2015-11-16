@@ -208,14 +208,19 @@ function World(){
     })
   }
 
+  function indexInner(objId, attrName, valuePart, on){
+    var reverseKey = packReverseKey(attrName,valuePart)
+    if(!world[reverseKey]) world[reverseKey] = {}
+    world[reverseKey][objId] = on
+  }
   function index(key,on){
     var dot = key.indexOf(".")
     var objId = key.substr(0,dot)
     var attrName = key.substr(dot+1)
     var value = world[key]
-    var reverseKey = packReverseKey(attrName,value)
-    if(!world[reverseKey]) world[reverseKey] = {}
-    world[reverseKey][objId] = on
+    if(value.indexOf(" ")>=0)
+      value.split(" ").forEach(function(valuePart){ indexInner(objId, attrName, valuePart, on) })
+    else indexInner(objId, attrName, value, on)
   }
   function merge(key,value){
     if(key in world) index(key,false)
@@ -236,7 +241,7 @@ function World(){
     keys.sort()
     return keys.map(function(k){ return [k,h[k]] });
   }
-
+  function clear(){ world = {} }
   function dump(){ console.log(world) }
 
   var pub = {
@@ -250,6 +255,7 @@ function World(){
     roTx: roTx,
     rwTx: rwTx,
     exportEach: exportEach,
+    clear: clear,
     dump: dump,
     merge: merge
   };
