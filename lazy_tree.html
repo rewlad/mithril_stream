@@ -1,0 +1,104 @@
+
+
+<!DOCTYPE html><html><head>
+<meta charset="utf-8" />
+<title>kvdbview</title>
+<script src="mithril.js"></script>
+<script>
+"use strict";
+
+(()=>{
+    for(var id = "a"; id.length < 8; id += "2")
+        sessionStorage.setItem(id+".isExpanded","1")
+})()
+
+function fakeRequest(ids){
+    console.log(ids)
+    m.startComputation()
+    const deferred = m.deferred()
+    const records = ids.map(id=>({id:id, children:[1,2,3,4].map(ch=>id+ch)}))
+    setTimeout(()=>{
+        deferred.resolve(records)
+        m.endComputation()
+    }, 200)
+    return deferred.promise;
+}
+
+function UnconsistentView(){}
+
+////////////////////////////////////////////////////////////////////////////////
+
+function mGetSet(get,set){
+    return v =>
+        arguments.length === 0 ? get() :
+        arguments.length === 1 ? set(v) : never()
+}
+
+const component = {
+    controller: function(){
+        const cacheData = new Map()
+        const needData = new Set()
+        var prevViewResult
+        function loadData(){
+            fakeRequest(Array.from(needData.keys())).then(res=>
+                res.forEach(rec=> cacheData.set(rec.id,rec) )
+            )
+        }
+        return {
+            idToData(id){
+                if(!cacheData.has(id)) needData.add(id)
+                return cacheData.get(id) || {}
+            },
+            withData_0(f){
+                needData.clear()
+                const res = f()
+                if(needData.size > 0) loadData()
+                return res
+            },
+            withData_1(f){
+                needData.clear()
+                const res = f()
+                if(needData.size > 0){ 
+                    loadData()
+                    return prevViewResult
+                }
+                prevViewResult = res
+                return res
+            },
+            
+            vm(id, propDef){
+                const key = id + "." + propDef.name
+                return mGetSet(
+                    () => sessionStorage.getItem(key),
+                    v => sessionStorage.setItem(key,v?"1":"")
+                )
+            },
+            schema: {
+                isExpanded: {
+                    name: "isExpanded"
+                }
+            }
+        }
+    },
+    view(ctl){
+        function viewBranch(id){
+            const rec = ctl.idToData(id)
+            const isExpanded = ctl.vm(id, ctl.schema.isExpanded)
+            return m("li", 
+                { key: id, onclick: event => {
+                    isExpanded(!isExpanded())
+                    event.stopPropagation()
+                } }, 
+                id, 
+                isExpanded() && rec.children ? m('ul', rec.children.map(viewBranch)) : []
+            )
+        }
+        return ctl.withData(() => viewBranch("a"))
+    }
+}
+
+</script>
+</head><body>
+<div id="kvdbViewEl" style="width:100%"></div>
+<script>m.mount(document.getElementById("kvdbViewEl"), component);</script>
+</body></html>
