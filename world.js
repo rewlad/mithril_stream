@@ -9,7 +9,7 @@ function World(){
 
   function Error(arg,msg){
     if(!msg) msg = 'Error';
-    this.toString = function(){ return msg+' - '+arg.toString()}
+    this.toString = function(){ return msg+' - '+(arg||"").toString()}
   }
 
   function Prop(attrName){
@@ -17,13 +17,15 @@ function World(){
       function key(objId){ return packKey(objId,attrName) }
       function unflat(values){
           if(values.length==0) return "";
-          if(values.length==1) return values[0] + "";
+          if(values.length==1) return (values[0]||"") + "";
           throw new Error(values)
       }
       function flat(value){ return value + "" }
       run.rev = Rev(attrName)
       run.rel = Rel(attrName)
       run.eq = EqFilter(run)
+      run.ne = NeFilter(run)
+      run.num = Num(run)
       return run
   }
 
@@ -60,13 +62,28 @@ function World(){
   }
 
   function EqFilter(propRun){
-    function run(objIds,args){ 
+    function run(objIds,args){
         function filter(objId){ return propRun([objId],[]) === args[0] }
-        return Obj(objIds.filter(filter)) 
+        return Obj(objIds.filter(filter))
     }
     return run
   }
-  
+  function NeFilter(propRun){
+    function run(objIds,args){
+        function filter(objId){ return propRun([objId],[]) !== args[0] }
+        return Obj(objIds.filter(filter))
+    }
+    return run
+  }
+
+  function Num(propRun){
+    function run(objIds,args){
+      if(args.length===0) return propRun(objIds,args)-0;
+      throw new Error(args)
+    }
+    return run
+  }
+
   function Act(act){           // attrName may be needed for server render
     function run(objIds,args){ // may be args are out of concept here?
       return rwTx(function(){ return act(Obj(objIds), args[0]) })
@@ -148,12 +165,15 @@ function World(){
     }
     return unflat(objIds.map(function(objId){
         var k = key(objId)
-        if(!tx) throw new Error(tx, "out of tx")
+        if(!tx)
+          throw new Error(tx, "out of tx")
         return world[k]
     }))
   }
 
   function Attr(objIds, attrDef){
+    if(!attrDef)
+      throw new Error("");
     function recv(value){ return attrDef(objIds,arguments) }
     recv.toString = function(){ return "Attr<"+objIds.join(",")+"> "+attrDef }
     return recv
@@ -181,49 +201,50 @@ function World(){
   }
   function roTx(f){ return doTx(null,f) }
   function rwTx(f){
-      function index(key,on){
-          var dot = key.indexOf(".")
-          var objId = key.substr(0,dot)
-          var attrName = key.substr(dot+1)
-          var value = world[key]
-          var reverseKey = packReverseKey(attrName,value)
-          if(!world[reverseKey]) world[reverseKey] = {}
-          world[reverseKey][objId] = on
-      }
-      doTx({},function(){
-        f()
-        for(var key in tx.changes){
-            if(key in world) index(key,false)
-            world[key] = tx.changes[key]
-            index(key,true)
-        }
-        //console.log(world)
-      })
+    doTx({},function(){
+      f()
+      var data = sortedFacts(tx.changes)
+      if(data.length>0) pub.commit(data)
+    })
   }
 
-  function exportEach(f){
+  function indexInner(objId, attrName, valuePart, on){
+    var reverseKey = packReverseKey(attrName,valuePart)
+    if(!world[reverseKey]) world[reverseKey] = {}
+    world[reverseKey][objId] = on
+  }
+  function index(key,on){
+    var dot = key.indexOf(".")
+    var objId = key.substr(0,dot)
+    var attrName = key.substr(dot+1)
+    var value = world[key]
+    if(value.indexOf(" ")>=0)
+      value.split(" ").forEach(function(valuePart){ indexInner(objId, attrName, valuePart, on) })
+    else indexInner(objId, attrName, value, on)
+  }
+  function merge(key,value){
+    if(key in world) index(key,false)
+    world[key] = value
+    index(key,true)
+  }
+
+  function exportEach(){
+    return sortedFacts(world)
+  }
+  function sortedFacts(h){
     var keys=[];
-    for(var key in world){
+    for(var key in h){
       var equ = key.indexOf("=");
       if(equ !== -1) continue;
       keys.push(key);
     };
-    keys.sort();
-    var len = keys.length;
-
-    for(var i = 0; i < len; i++){
-      var dot = keys[i].indexOf(".");
-      var objId = keys[i].substr(0,dot);
-      var attrName = keys[i].substr(dot+1);
-      var value = world[keys[i]];
-
-      f(objId,attrName,value);
-    }
+    keys.sort()
+    return keys.map(function(k){ return [k,h[k]] });
   }
-
+  function clear(){ world = {} }
   function dump(){ console.log(world) }
 
-  return {
+  var pub = {
     Prop: Prop,
     Act: Act,
     id: id,
@@ -234,6 +255,9 @@ function World(){
     roTx: roTx,
     rwTx: rwTx,
     exportEach: exportEach,
-    dump: dump
+    clear: clear,
+    dump: dump,
+    merge: merge
   };
+  return pub;
 }
