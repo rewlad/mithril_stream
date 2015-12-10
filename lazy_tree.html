@@ -7,89 +7,134 @@
 <script>
 "use strict";
 
-function isExpandedDef(id){ return id + ".isExpanded" }
+///// fake/init stuff
 
-
-///// fake stuff
-
-(()=>{
-    for(var id = "a"; id.length < 8; id += "2")
-        sessionStorage.setItem(isExpandedDef(id),"1")
+(function(){
+    for(var id = "a"; id.length < 8; id += "2") vm(id)(isExpandedDef())("1")
 })()
 
 function fakeRequest(ids){
     console.log(ids)
     m.startComputation()
-    const deferred = m.deferred()
-    const records = ids.map(id=>({id:id, children:[1,2,3,4].map(ch=>id+ch)}))
-    setTimeout(()=>{
+    var deferred = m.deferred()
+    var records = ids.map(function(id){ 
+        return { 
+            id: id, 
+            children: [1,2,3,4].map(function(ch){ return id+ch }) 
+        } 
+    })
+    setTimeout(function(){
         deferred.resolve(records)
         m.endComputation()
     }, 100)
     return deferred.promise
 }
 
-////
+//// model/controller system code
 
 function mGetSet(get,set){
-    return v =>
-        arguments.length === 0 ? get() :
-        arguments.length === 1 ? set(v) : never()
+    return function(v){
+        if(arguments.length > 1) never()
+        if(arguments.length === 1) set(v)
+        return get(v)
+    }
+}
+
+function vm(id){
+    return function(propName){
+        var key = id + "." + propName
+        return mGetSet(
+            function(){ return sessionStorage.getItem(key) },
+            function(v){ sessionStorage.setItem(key,v?"1":"") }
+        )
+    }
+}
+
+function Set(){
+    var has = {}
+    var list = []
+    function add(value){
+        if(!has[value]){
+            list.push(value)
+            has[value] = 1
+        }
+    }
+    function nonEmpty(){
+        return list.length > 0
+    }
+    function keys(){
+        return list.slice()
+    }
+    return {
+        keys: keys,
+        add: add,
+        nonEmpty: nonEmpty
+    }
 }
 
 function controller(){
-    const cacheData = new Map()
-    const needData = new Set()
+    var cacheData = {}
+    var needData
     var prevViewResult
     function loadData(){
-        fakeRequest(Array.from(needData.keys())).then(res=>
-            res.forEach(rec=> cacheData.set(rec.id,rec) )
-        )
+        fakeRequest(needData.keys()).then(function(res){
+            res.forEach(function(rec){
+                cacheData[rec.id] = rec
+            })
+        })
+    }
+    function idToData(id){
+        if(!cacheData[id]) needData.add(id)
+        return cacheData[id] || {}
+    }
+    function withData(f){
+        needData = Set()
+        var res = f()
+        if(needData.nonEmpty()) loadData()
+        return res
+    }
+    function preventManyRedraws(res){
+        if(needData.nonEmpty()) return prevViewResult
+        prevViewResult = res
+        return res
     }
     return {
-        idToData(id){
-            if(!cacheData.has(id)) needData.add(id)
-            return cacheData.get(id) || {}
-        },
-        withData(f){
-            needData.clear()
-            const res = f()
-            if(needData.size > 0) loadData()
-            return res
-        },
-        preventManyRedraws(res){
-            if(needData.size > 0) return prevViewResult
-            prevViewResult = res
-            return res
-        },
-        vm(id, propDef){
-            const key = propDef(id)
-            return mGetSet(
-                () => sessionStorage.getItem(key),
-                v => sessionStorage.setItem(key,v?"1":"")
-            )
-        }
+        idToData: idToData,
+        withData: withData,
+        preventManyRedraws: preventManyRedraws
     }
 }
 
-function viewBranch(ctl, id){
-    const rec = ctl.idToData(id)
-    const isExpanded = ctl.vm(id, isExpandedDef)
+///
+// viewBranch is just an example; 
+// isExpanded and children are example properties, not system ones;
+
+function isExpandedDef(){ return "isExpanded" }
+function viewBranch(ctl, id){ 
+    var rec = ctl.idToData(id)
+    var isExpanded = vm(id)(isExpandedDef())
     return m("li", 
-        { key: id, onclick: event => {
+        { key: id, onclick: function(event){
             isExpanded(!isExpanded())
             event.stopPropagation()
         } }, 
         id, 
         isExpanded() && rec.children ? 
-            m('ul', rec.children.map(childId=>viewBranch(ctl, childId))) : []
+            m('ul', rec.children.map(function(childId){ 
+                return viewBranch(ctl, childId) 
+            })) : 
+            []
     )
 }
 function viewWithManyRedraws(ctl){
-    return ctl.withData(() => viewBranch(ctl,"a"))
+    return ctl.withData(function(){ 
+        return viewBranch(ctl,"a")
+    })
 }
 function viewWithFinalRedraw(ctl){
-    return ctl.withData(() => ctl.preventManyRedraws(viewBranch(ctl,"a")))
+    return ctl.withData(function(){ 
+        return ctl.preventManyRedraws(viewBranch(ctl,"a")) 
+    })
 }
 
 </script>
@@ -98,6 +143,7 @@ function viewWithFinalRedraw(ctl){
 #right { border: 1px solid green }
 </style>
 </head><body>
+click nodes to collapse/expand:
 <table style="width:100%;height:100%;table-layout:fixed"><tr><td id="left"/><td id="right"/></tr></table>
 <script>
 m.mount(document.getElementById("left"), { controller: controller, view: viewWithManyRedraws })
